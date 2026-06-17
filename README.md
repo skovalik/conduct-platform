@@ -63,10 +63,6 @@ conduct-platform does not ship other people's tools. Setup detects what you alre
 
 Every flagship LLM is in scope, reached through whatever harness drives it (Claude Code, Codex, Antigravity, Cursor, Cline, opencode, and more, plus local models). The only per-platform variation is graceful feature degradation (a hook-capable harness gets a native SessionStart hook; the rest get an AGENTS.md banner reminder) and an honest verification-confidence stamp per target. See `docs/` for the coverage matrix.
 
-## Privacy
-
-conduct-platform ships generic structure and name-free exemplars, never real content. Personal facts are tokens (`{{USER_NAME}}` and the like) that you fill at install; nothing about you is assumed or hard-coded. The example sessions, memory, and wiki entries are illustrative, not real data.
-
 ## Status
 
 Pre-release. Built and verified cross-OS (Windows, macOS, Linux CI green): the lifecycle and state engine, the emission layer with a wired owned fallback, the dependency manifest and the companion-tool offer, the full rule corpus from conduct, the onboarding layer, the close-out protocol, and the orchestrator and CLI that compose the whole install (runtime-verified on Claude Code). Pending: non-Claude runtime verification by the first user, and an automated one-way promote sync from the maintainer's workspace (the manual workflow is documented in [MAINTAINING.md](MAINTAINING.md)).
