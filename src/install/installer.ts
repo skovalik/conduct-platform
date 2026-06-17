@@ -52,13 +52,17 @@ export function payloadFromEmitted(files: string[]): PayloadArtifact[] {
 export function corpusArtifacts(corpusDir: string, destMemoryDir: string): PayloadArtifact[] {
   const arts: PayloadArtifact[] = [];
   if (!existsSync(corpusDir)) return arts;
-  for (const f of readdirSync(corpusDir).filter((x) => x.endsWith(".md"))) {
-    arts.push({
-      path: join(destMemoryDir, f),
-      format: "markdown",
-      markdownRegion: readFileSync(join(corpusDir, f), "utf8"),
-    });
-  }
+  const walkMd = (dir: string, rel: string): void => {
+    for (const e of readdirSync(dir)) {
+      const abs = join(dir, e);
+      const r = rel ? rel + "/" + e : e;
+      if (statSync(abs).isDirectory()) walkMd(abs, r);
+      else if (e.toLowerCase().endsWith(".md")) {
+        arts.push({ path: join(destMemoryDir, r), format: "markdown", markdownRegion: readFileSync(abs, "utf8") });
+      }
+    }
+  };
+  walkMd(corpusDir, "");
   return arts;
 }
 

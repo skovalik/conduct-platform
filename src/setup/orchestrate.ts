@@ -45,7 +45,7 @@ import { verifyInstall, type VerifyResult } from "../verify/gate.ts";
 import { discoverabilitySheet } from "../onboarding/discoverability.ts";
 import { renderGuidedRun } from "../onboarding/guided-run.ts";
 import { renderOffer } from "../onboarding/rule-split.ts";
-import type { DepTier } from "../manifest/manifest.ts";
+import { MANIFEST, type DepTier } from "../manifest/manifest.ts";
 import type { Scope } from "../lifecycle/types.ts";
 
 export type SetupVerb = "install" | "update" | "uninstall" | "resume" | "rollback" | "rules";
@@ -125,6 +125,19 @@ export function runSetup(input: SetupInput): SetupReport {
     // 3. emit into staging (generator, else the owned fallback)
     const emit = emitReal(staging, input.harness, { hook: input.hook, runner: input.emitRunner });
     notes.push(...emit.notes);
+
+    // Honesty: a non-Codex fallback is the AGENTS.md floor only, so any accepted
+    // MCP tools were written to the staged mcp.json but not emitted. Say so.
+    if (emit.usedFallback && input.harness !== "codex") {
+      const mcpAccepted = accepted.filter((n) =>
+        MANIFEST.some((e) => e.name === n && e.install.method === "mcp"),
+      );
+      if (mcpAccepted.length) {
+        notes.push(
+          `accepted MCP tool(s) not wired in the ${input.harness} fallback (the floor has no MCP; rich emission needs the generator): ${mcpAccepted.join(", ")}`,
+        );
+      }
+    }
 
     // 4. stage the corpus + scaffold so they are substituted and laid down too
     const stagedMemory = join(staging, "memory");

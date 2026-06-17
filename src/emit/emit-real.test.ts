@@ -6,7 +6,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { emitReal } from "./emit-real.ts";
@@ -47,9 +47,10 @@ test("emitReal fallback gives the AGENTS.md floor for a non-Codex harness", () =
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("emitReal emits the SessionStart hook config when asked (Claude)", () => {
+test("emitReal applies the AGENTS.md banner reminder when the hook is requested", () => {
   const dir = stageRulesync();
   emitReal(dir, "claude", { runner: FAIL_RUNNER, hook: true });
-  assert.ok(existsSync(join(dir, ".claude", "hooks", "hooks.json")), "claude hook config written");
+  const agents = readFileSync(join(dir, "AGENTS.md"), "utf8");
+  assert.ok(agents.includes("run the setup command"), "banner reminder prepended to AGENTS.md");
   rmSync(dir, { recursive: true, force: true });
 });

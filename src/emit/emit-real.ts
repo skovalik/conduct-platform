@@ -1,27 +1,27 @@
 // conduct-platform, authored by Stefan Kovalik <stefan@aurochs.agency>. https://github.com/skovalik/conduct-platform. MIT License (see LICENSE).
 // The wired emission entry point: try the generator (rulesync), and on any failure
 // fall back to conduct-platform's own owned emitters so the core never depends on
-// the generator (plan section 5). This is what composes runRulesync + the owned
-// Codex/Antigravity emitters + the AGENTS.md floor + the hand-emitted hook into one
-// call the orchestrator uses. It operates on a STAGING dir (which already holds a
-// `.rulesync/`), never the destination, so an existing user file is never touched
-// here; the lifecycle merges staging into the destination later.
+// the generator (plan section 5). This composes runRulesync + the owned Codex and
+// Antigravity emitters + the AGENTS.md floor + the AGENTS.md hook-reminder banner
+// into one call the orchestrator uses. It operates on a STAGING dir (which already
+// holds a `.rulesync/`), never the destination, so an existing user file is never
+// touched here; the lifecycle merges staging into the destination later.
 //
 // Honest fallback coverage: the owned fallback emits Codex natively (rules + MCP +
 // agents) and the AGENTS.md floor for every other harness. Antigravity is
 // floor-only by decision 13.12. Gemini-and-beyond RICH components depend on the
 // generator; if it dies, those harnesses get the AGENTS.md floor.
 
-import { writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
+import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { runRulesync } from "./generate.ts";
 import { readCanonical, type Canonical } from "./emitters/canonical.ts";
 import { emitCodex } from "./emitters/codex.ts";
 import { emitAntigravity } from "./emitters/antigravity.ts";
-import { emitHook } from "./hooks.ts";
+import { emitHook, AGENTS_BANNER } from "./hooks.ts";
 
 export interface EmitRealOptions {
-  hook?: boolean; // emit the SessionStart hook config for this harness
+  hook?: boolean; // apply the SessionStart reminder for this harness
   runner?: string; // override the rulesync runner (tests force a failure to exercise the fallback)
 }
 
@@ -39,42 +39,23 @@ function targetsFor(harness: string): string[] {
   return ["agentsmd"];
 }
 
-// The native output paths rulesync writes per harness (canonical-source-schema.md
-// emission map). rulesync returns stdout, not a file list, so we discover what it
-// wrote by scanning these known single files and component directories.
-const OUTPUT_MAP: Record<string, { files: string[]; dirs: { dir: string; ext: string }[] }> = {
-  claude: {
-    files: ["CLAUDE.md", "AGENTS.md", ".mcp.json"],
-    dirs: [{ dir: ".claude/commands", ext: ".md" }, { dir: ".claude/agents", ext: ".md" }],
-  },
-  codex: {
-    files: ["AGENTS.md", ".codex/config.toml"],
-    dirs: [{ dir: ".codex/agents", ext: ".toml" }],
-  },
-  gemini: {
-    files: ["GEMINI.md", "AGENTS.md", ".gemini/settings.json"],
-    dirs: [{ dir: ".gemini/commands", ext: ".toml" }, { dir: ".gemini/agents", ext: ".md" }],
-  },
-};
-
-function discoverEmitted(root: string, harness: string): string[] {
-  const map = OUTPUT_MAP[harness] ?? { files: ["AGENTS.md"], dirs: [] };
+// Discover what the generator emitted: scan staging for text files, excluding the
+// `.rulesync/` source. rulesync returns stdout (not a file list), and its output
+// paths vary by harness and version, so a content scan is more robust than a fixed
+// path map: it never misses a new output file. (The fallback returns its own list,
+// so this runs only after a successful generator pass.)
+function discoverEmitted(root: string): string[] {
   const found: string[] = [];
-  for (const f of map.files) {
-    const p = join(root, f);
-    if (existsSync(p)) found.push(p);
-  }
-  for (const d of map.dirs) {
-    const dir = join(root, d.dir);
-    try {
-      for (const e of readdirSync(dir)) {
-        if (e.toLowerCase().endsWith(d.ext)) found.push(join(dir, e));
-      }
-    } catch {
-      // dir absent: nothing emitted for this component
+  const walk = (dir: string): void => {
+    for (const e of readdirSync(dir)) {
+      if (e === ".rulesync") continue; // the input, not output
+      const p = join(dir, e);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (/\.(md|json|toml)$/i.test(e)) found.push(p);
     }
-  }
-  return [...new Set(found)];
+  };
+  walk(root);
+  return found;
 }
 
 function writeAtomic(path: string, content: string): void {
@@ -113,21 +94,23 @@ function ownedFallback(root: string, harness: string, c: Canonical): { files: st
   return { files, notes };
 }
 
-// Emit the SessionStart hook config into staging (where the harness supports
-// hooks). The launcher script install is the orchestrator's job (a destination
-// action). Banner-only harnesses prepend a notice to AGENTS.md instead.
-function emitHookConfig(root: string, harness: string): { files: string[]; notes: string[] } {
+// The SessionStart reminder. The rich native hook needs a launcher on PATH that
+// conduct-platform does not install yet, so the reminder is the AGENTS.md banner:
+// it works on every harness with no launcher and cannot become a dead config.
+// emitHook still classifies the harness, so the note is honest about what is
+// deferred. The banner carries no token, so tokenize-last and the gate leave it be.
+function applyHookReminder(root: string, harness: string): { files: string[]; notes: string[] } {
   const h = emitHook(harness);
-  const files: string[] = [];
-  const notes: string[] = [];
-  if (h.supportsHooks && h.configPath && h.config !== undefined) {
-    writeAtomic(join(root, h.configPath), JSON.stringify(h.config, null, 2) + "\n");
-    files.push(join(root, h.configPath));
-    notes.push(`hook: ${harness} SessionStart config emitted (${h.confidence}).`);
-  } else if (h.bannerOnly && h.banner) {
-    notes.push(`hook: ${harness} has no startup hook; the AGENTS.md banner is the degradation (applied at install).`);
+  const agents = join(root, "AGENTS.md");
+  if (!existsSync(agents)) {
+    return { files: [], notes: ["hook: requested, but no AGENTS.md is present to carry the reminder."] };
   }
-  return { files, notes };
+  const cur = readFileSync(agents, "utf8");
+  if (!cur.includes(AGENTS_BANNER)) writeAtomic(agents, AGENTS_BANNER + "\n\n" + cur);
+  const note = h.supportsHooks
+    ? "hook: native SessionStart deferred (no launcher installed yet); AGENTS.md banner reminder applied."
+    : `hook: AGENTS.md banner reminder applied (${harness} has no startup hook).`;
+  return { files: [agents], notes: [note] };
 }
 
 export function emitReal(stagingRoot: string, harness: string, opts: EmitRealOptions = {}): EmitRealResult {
@@ -139,7 +122,7 @@ export function emitReal(stagingRoot: string, harness: string, opts: EmitRealOpt
 
   try {
     runRulesync({ root: stagingRoot, targets, features, runner: opts.runner });
-    files = discoverEmitted(stagingRoot, harness);
+    files = discoverEmitted(stagingRoot);
     if (files.length === 0) throw new Error("generator produced no discoverable output");
     notes.push(`generator emitted ${files.length} file(s) for ${harness}.`);
   } catch (err) {
@@ -152,7 +135,7 @@ export function emitReal(stagingRoot: string, harness: string, opts: EmitRealOpt
   }
 
   if (opts.hook) {
-    const hk = emitHookConfig(stagingRoot, harness);
+    const hk = applyHookReminder(stagingRoot, harness);
     files.push(...hk.files);
     notes.push(...hk.notes);
   }

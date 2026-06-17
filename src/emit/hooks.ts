@@ -14,9 +14,11 @@ export const HOOK_CAPABLE_HARNESSES = new Set(["claude", "codex", "gemini"]);
 export const REMINDER =
   "conduct-platform is installed but not initialized here. Run the setup command to finish.";
 
-// The banner for harnesses with no startup hook: prepended to AGENTS.md.
+// The banner for harnesses with no startup hook: prepended to AGENTS.md. It must
+// not contain a literal double-brace token, or tokenize-last would rewrite it and
+// the verification gate would flag it.
 export const AGENTS_BANNER =
-  "> conduct-platform: if these rules look unfilled (tokens like {{USER_NAME}} remain), run the setup command to personalize them.";
+  "> conduct-platform: if these rules still show unfilled double-brace placeholders, run the setup command to personalize them.";
 
 export type HookConfidence = "runtime-verified" | "docs-level";
 

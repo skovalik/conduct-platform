@@ -40,7 +40,7 @@ All optional, all external. conduct-platform wires up whatever you accept and po
 
 ## Cross-platform support
 
-Every flagship LLM is in scope, reached through whatever harness drives it (Claude Code, Codex, Antigravity, Cursor, Cline, opencode, and more, plus local models). The only per-platform variation is graceful feature degradation (a harness with no startup hook gets an AGENTS.md banner instead of a reminder) and an honest verification-confidence stamp per target. See `docs/` for the coverage matrix.
+Every flagship LLM is in scope, reached through whatever harness drives it (Claude Code, Codex, Antigravity, Cursor, Cline, opencode, and more, plus local models). The only per-platform variation is graceful feature degradation (the SessionStart reminder ships as an AGENTS.md banner today, with native per-harness hooks deferred) and an honest verification-confidence stamp per target. See `docs/` for the coverage matrix.
 
 ## Privacy
 

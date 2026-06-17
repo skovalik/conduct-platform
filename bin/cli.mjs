@@ -14,4 +14,9 @@ const entry = join(here, "..", "src", "cli-impl.ts");
 const res = spawnSync(process.execPath, ["--experimental-strip-types", entry, ...process.argv.slice(2)], {
   stdio: "inherit",
 });
+// Propagate a signal kill as a signal (so Ctrl+C and SIGTERM are not masked as a
+// plain exit 1, which a caller could not distinguish from a gate failure).
+if (res.signal) {
+  process.kill(process.pid, res.signal);
+}
 process.exit(res.status ?? 1);
