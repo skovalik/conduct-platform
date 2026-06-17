@@ -23,20 +23,20 @@ conduct-platform does not ship other people's tools. Setup detects what you alre
 **Suggested first (core):**
 
 - **recall** - cross-session memory: a searchable record of past work.
-- **beads** - a git-committed issue tracker for ready and in-progress work across sessions.
+- **[beads](https://github.com/steveyegge/beads)** - a git-committed issue tracker for ready and in-progress work across sessions.
 - **loop** - run a task or check on a recurring interval.
 - **prose-scrub** - strip LLM tells from copy before publishing.
 
 **Offered as you hit the need (recommended):**
 
-- **serena** - symbol-level code navigation.
-- **context7** - up-to-date library and framework docs.
+- **[serena](https://github.com/oraios/serena)** - symbol-level code navigation.
+- **[context7](https://github.com/upstash/context7)** - up-to-date library and framework docs.
 - **deep-research** - fan-out, fact-checked research (native subagents, single-agent fallback).
 - **code-review** - parallel review of a diff before merge.
 - **pfd** - Perception-First Design, for evaluating a UI, page, or piece of copy.
-- **superpowers** - disciplined TDD, debugging, and planning workflows.
+- **[superpowers](https://github.com/obra/superpowers)** - disciplined TDD, debugging, and planning workflows.
 - **feature-dev** - feature work with an architecture focus.
-- **impeccable** - distinctive frontend design.
+- **[impeccable](https://github.com/pbakaus/impeccable)** - distinctive frontend design.
 
 **Optional:**
 
