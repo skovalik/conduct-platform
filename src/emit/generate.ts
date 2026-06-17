@@ -20,7 +20,12 @@ export interface GenerateOptions {
 // Run rulesync. Returns its stdout. Cross-OS npx resolution (npx.cmd on Windows).
 // Throws on failure; the caller falls back to the owned emitters.
 export function runRulesync(opts: GenerateOptions): string {
-  const runner = opts.runner ?? (process.platform === "win32" ? "npx.cmd" : "npx");
+  const isWin = process.platform === "win32";
+  // npx is a .cmd shim on Windows, and Node refuses to execFile a .cmd without a
+  // shell (EINVAL). So run through the shell on Windows and quote the one path
+  // argument (the input root, which may contain spaces). On POSIX, no shell.
+  const runner = opts.runner ?? "npx";
+  const inputRoot = isWin ? `"${opts.root}"` : opts.root;
   const args = [
     "-y",
     "rulesync@latest",
@@ -30,12 +35,13 @@ export function runRulesync(opts: GenerateOptions): string {
     "-f",
     opts.features.join(","),
     "--input-root",
-    opts.root,
+    inputRoot,
   ];
   return execFileSync(runner, args, {
     cwd: opts.root,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
+    shell: isWin,
   });
 }
 
