@@ -12,9 +12,13 @@ It is the cross-platform successor to [conduct](https://github.com/skovalik/cond
 
 ## What you get
 
-- **The operating rules**: conduct's 8 Golden Rules, the Anti-Sycophancy Protocol, and the Session Memory Protocol (the always-loaded payload).
-- **The layered memory**: the on-demand "how the agent thinks and verifies" files, cross-linked and loaded only when referenced, plus a memory scaffold with name-free exemplars.
-- **The guided first run**: a walkthrough of the loop once, with you, ending in your first session snapshot and wiki page.
+All of this ships in the repo and runs with no external install. The companion tools in the next section are separate and optional.
+
+- **The operating rules**: conduct's 8 Golden Rules, the Anti-Sycophancy Protocol, and the Session Memory Protocol, always loaded.
+- **The thinking-and-verification corpus**: more than 30 on-demand rule files (plan before code, verify at runtime, scope discipline, and the rest), cross-linked and pulled in only when referenced, so the always-loaded payload stays small.
+- **Layered memory**: three layers that keep context alive across sessions. The **index** (`MEMORY.md`) holds live state and a CONTINUE HERE pointer; the **knowledge base** (a wiki) holds compounding lessons, one page each, so a one-off becomes something the agent reuses; the **searchable store** holds everything else (wired to the recall companion if you add it). Each ships as a name-free exemplar, so the shape is there to copy from day one.
+- **The close-out protocol**: one save sweep (snapshot, refresh the index, capture wiki lessons, log, reindex, flush the tracker) triggered by "save", "done", or "goodnight", so ending a session is one motion instead of six.
+- **The guided first run**: a walkthrough of one real research, plan, and implement loop, with you, ending in your first session snapshot and first wiki page.
 
 ## Companion tools (offered during setup, not bundled)
 
