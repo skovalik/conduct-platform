@@ -21,7 +21,7 @@ This file is for the maintainer. Users run setup; the maintainer edits the canon
 2. Add a `## <next version>` section to `CHANGELOG.md`. The release script refuses a version with no changelog section.
 3. Commit (single-author, no AI co-author trailer).
 4. Run the release helper: `node scripts/release.mjs [patch|minor|major]`. It bumps `package.json`, checks the changelog, runs the tests and typecheck, commits the bump, and tags. `--dry-run` previews.
-5. Push (`git push --follow-tags`). CI runs the cross-OS matrix.
+5. Push (`git push --follow-tags`). CI runs the cross-OS matrix: typecheck, tests, and a real generator emit through the orchestrator that fails if it falls back.
 
 Push is the irreversible moment: before it, make sure only generic, tokenized structure and name-free exemplars go up, never real names, secrets, or real content.
 
@@ -29,4 +29,6 @@ Push is the irreversible moment: before it, make sure only generic, tokenized st
 
 - **Hook scripts must stay LF.** `payload/hooks/*` are run by bash, which breaks on CRLF; `.gitattributes` enforces LF.
 - **Credit is the one allowed person reference.** The author name, email, and repo URL are the only person reference that ships; anything else is a mistake.
-- **Runtime proof is partial.** Only Claude Code is runtime-verified locally. Keep the section-5 coverage matrix honest; do not promote a docs-level row without a real run.
+- **The generator runs through a shell on Windows.** `npx` is a `.cmd` shim; spawning it without `shell:true` throws EINVAL and silently falls back. `runRulesync` and `isPresent` handle this, and the CI generator guard (`scripts/ci-generator-check.mjs`) asserts the real path ran, on every OS.
+- **Installs apply through the orchestrator.** `src/setup/orchestrate.ts` (the `conduct-platform` CLI, `bin/cli.mjs`) composes the install; the agent gathers inputs per the bootstrap procedure and runs it. See `docs/cli.md`.
+- **Runtime proof is partial.** Generator emission is runtime-verified for Claude and Codex; non-Claude *consumption* awaits the first user. Keep the section-5 coverage matrix honest; do not promote a docs-level row without a real run.

@@ -143,11 +143,15 @@ This test must exist and pass before any emitter is marked done.
 | AGENTS.md floor | `AGENTS.md` | none (floor is rules-only) | simulated (degrade) | simulated (degrade) |
 | Claude (home) | `CLAUDE.md` | `.mcp.json` | `.claude/commands/*.md` | `.claude/agents/*.md` |
 
-## Hooks (one open item for Phase 2)
+## Hooks (hand-emitted, not via the generator)
 
-rulesync lists `hooks` as a feature and scaffolds a `.rulesync/hooks.json`. The
-plan (section 5) treats hooks as the degradation exception (hand-emit the
-SessionStart reminder where the harness has hooks; degrade to an AGENTS.md banner
-elsewhere). Whether rulesync's hooks feature emits a correct per-harness
-SessionStart reminder was NOT verified in the Phase-0 spike; until it is (Phase
-2), the hand-emit-plus-degrade approach is the baseline.
+The plan (section 5) treats hooks as the degradation exception, and that is what
+shipped: the orchestrator hand-emits the SessionStart reminder rather than relying
+on rulesync's hooks feature. A hook-capable harness (Claude, Codex, Gemini) gets a
+native hook config whose command is the installed launcher (`run-hook.cmd` +
+`session-start`, copied to a conduct-owned dir and referenced by absolute path),
+merged into the harness hook config so it never clobbers a file that also holds
+other settings. Every other harness gets the AGENTS.md banner. The launcher's
+reminder logic is runtime-verified (it fires only when a rules file still has an
+unfilled token); the actual per-harness SessionStart firing past Claude is
+docs-level until the first user runs it.

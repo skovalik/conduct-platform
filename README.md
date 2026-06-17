@@ -18,12 +18,29 @@ It is the cross-platform successor to [conduct](https://github.com/skovalik/cond
 
 ## Companion tools (offered during setup, not bundled)
 
-conduct-platform does not ship other people's tools. Setup detects what you already have and offers the ones that pair well, install-with-consent or skip-with-instructions, so you decide what to add:
+conduct-platform does not ship other people's tools. Setup detects what you already have and offers each one, install-with-consent or skip-with-instructions, so you decide what to add. Accepted MCP tools are wired into your harness's config; none of it is required to run the rules and memory.
 
-- **Suggested first**: cross-session recall (a searchable memory of past work) and an issue tracker. These two make the memory protocol and the planning loop pay off.
-- **Offered as you hit the need**: symbol-level code navigation, current library docs, fan-out research, parallel code review, a design-evaluation pass, and a TDD and debugging workflow pack, among others.
+**Suggested first (core):**
 
-All optional, all external. conduct-platform wires up whatever you accept and points you to install steps for the rest. None of it is required to run the rules and memory.
+- **recall** - cross-session memory: a searchable record of past work.
+- **beads** - a git-committed issue tracker for ready and in-progress work across sessions.
+- **loop** - run a task or check on a recurring interval.
+- **prose-scrub** - strip LLM tells from copy before publishing.
+
+**Offered as you hit the need (recommended):**
+
+- **serena** - symbol-level code navigation.
+- **context7** - up-to-date library and framework docs.
+- **deep-research** - fan-out, fact-checked research (native subagents, single-agent fallback).
+- **code-review** - parallel review of a diff before merge.
+- **pfd** - Perception-First Design, for evaluating a UI, page, or piece of copy.
+- **superpowers** - disciplined TDD, debugging, and planning workflows.
+- **feature-dev** - feature work with an architecture focus.
+- **impeccable** - distinctive frontend design.
+
+**Optional:**
+
+- **voice** - draft in your established writing voice.
 
 ## How it is shaped (three layers)
 
