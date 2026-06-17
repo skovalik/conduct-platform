@@ -111,3 +111,30 @@ test("uninstall removes our content and the record", () => {
   assert.ok(un.notes.some((n) => /removed/.test(n)), "removed our content");
   rmSync(dest, { recursive: true, force: true });
 });
+
+test("hook: native SessionStart wired with the launcher installed (claude)", () => {
+  const dest = destDir();
+  const report = runSetup({
+    root: dest, scope: "project", harness: "claude", tokenMap: TOKENS,
+    tiers: ["core"], committedAt: "2026-06-16", packageRoot: REPO,
+    statePath: join(dest, "_state.json"), emitRunner: FAIL_RUNNER, hook: true,
+  });
+  assert.ok(existsSync(join(dest, ".conduct-platform", "hooks", "run-hook.cmd")), "launcher installed");
+  assert.ok(existsSync(join(dest, ".conduct-platform", "hooks", "session-start")), "session-start installed");
+  const cfg = readFileSync(join(dest, ".claude", "hooks", "hooks.json"), "utf8");
+  assert.ok(cfg.includes("run-hook.cmd"), "hook config references the installed launcher");
+  assert.ok(report.verify?.allPass, "gate passes with the hook: " + JSON.stringify(report.verify?.checks));
+  rmSync(dest, { recursive: true, force: true });
+});
+
+test("hook: a non-hook-capable harness gets the AGENTS.md banner", () => {
+  const dest = destDir();
+  runSetup({
+    root: dest, scope: "project", harness: "cursor", tokenMap: TOKENS,
+    tiers: ["core"], committedAt: "2026-06-16", packageRoot: REPO,
+    statePath: join(dest, "_state.json"), emitRunner: FAIL_RUNNER, hook: true,
+  });
+  const agents = readFileSync(join(dest, "AGENTS.md"), "utf8");
+  assert.ok(agents.includes("run the setup command"), "banner applied for a non-hook harness");
+  rmSync(dest, { recursive: true, force: true });
+});

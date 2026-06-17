@@ -2,26 +2,25 @@
 // The wired emission entry point: try the generator (rulesync), and on any failure
 // fall back to conduct-platform's own owned emitters so the core never depends on
 // the generator (plan section 5). This composes runRulesync + the owned Codex and
-// Antigravity emitters + the AGENTS.md floor + the AGENTS.md hook-reminder banner
-// into one call the orchestrator uses. It operates on a STAGING dir (which already
-// holds a `.rulesync/`), never the destination, so an existing user file is never
-// touched here; the lifecycle merges staging into the destination later.
+// Antigravity emitters + the AGENTS.md floor into one call the orchestrator uses.
+// It operates on a STAGING dir (which already holds a `.rulesync/`), never the
+// destination, so an existing user file is never touched here; the lifecycle
+// merges staging into the destination later. (The SessionStart hook and banner are
+// handled by the orchestrator, which knows the destination path the launcher needs.)
 //
 // Honest fallback coverage: the owned fallback emits Codex natively (rules + MCP +
 // agents) and the AGENTS.md floor for every other harness. Antigravity is
 // floor-only by decision 13.12. Gemini-and-beyond RICH components depend on the
 // generator; if it dies, those harnesses get the AGENTS.md floor.
 
-import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync, statSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { runRulesync } from "./generate.ts";
 import { readCanonical, type Canonical } from "./emitters/canonical.ts";
 import { emitCodex } from "./emitters/codex.ts";
 import { emitAntigravity } from "./emitters/antigravity.ts";
-import { emitHook, AGENTS_BANNER } from "./hooks.ts";
 
 export interface EmitRealOptions {
-  hook?: boolean; // apply the SessionStart reminder for this harness
   runner?: string; // override the rulesync runner (tests force a failure to exercise the fallback)
 }
 
@@ -94,25 +93,6 @@ function ownedFallback(root: string, harness: string, c: Canonical): { files: st
   return { files, notes };
 }
 
-// The SessionStart reminder. The rich native hook needs a launcher on PATH that
-// conduct-platform does not install yet, so the reminder is the AGENTS.md banner:
-// it works on every harness with no launcher and cannot become a dead config.
-// emitHook still classifies the harness, so the note is honest about what is
-// deferred. The banner carries no token, so tokenize-last and the gate leave it be.
-function applyHookReminder(root: string, harness: string): { files: string[]; notes: string[] } {
-  const h = emitHook(harness);
-  const agents = join(root, "AGENTS.md");
-  if (!existsSync(agents)) {
-    return { files: [], notes: ["hook: requested, but no AGENTS.md is present to carry the reminder."] };
-  }
-  const cur = readFileSync(agents, "utf8");
-  if (!cur.includes(AGENTS_BANNER)) writeAtomic(agents, AGENTS_BANNER + "\n\n" + cur);
-  const note = h.supportsHooks
-    ? "hook: native SessionStart deferred (no launcher installed yet); AGENTS.md banner reminder applied."
-    : `hook: AGENTS.md banner reminder applied (${harness} has no startup hook).`;
-  return { files: [agents], notes: [note] };
-}
-
 export function emitReal(stagingRoot: string, harness: string, opts: EmitRealOptions = {}): EmitRealResult {
   const targets = targetsFor(harness);
   const features = ["rules", "mcp", "commands", "subagents"];
@@ -132,12 +112,6 @@ export function emitReal(stagingRoot: string, harness: string, opts: EmitRealOpt
     const fb = ownedFallback(stagingRoot, harness, canonical);
     files = fb.files;
     notes.push(...fb.notes);
-  }
-
-  if (opts.hook) {
-    const hk = applyHookReminder(stagingRoot, harness);
-    files.push(...hk.files);
-    notes.push(...hk.notes);
   }
 
   return { files: [...new Set(files)], usedFallback, notes };

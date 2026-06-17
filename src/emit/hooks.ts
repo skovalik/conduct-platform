@@ -3,11 +3,12 @@
 // conduct-platform hand-emits a SessionStart reminder where the harness has hooks
 // (Claude Code, Codex, Gemini) and degrades to an AGENTS.md banner everywhere
 // else. The reminder fires only when installed-but-uninitialized (mirroring
-// conduct's self-silencing hook); that gating lives in the emitted script.
+// conduct's self-silencing hook); that gating lives in the emitted script. The
+// orchestrator installs the launcher and passes its command in here.
 //
 // Honesty: only the Claude Code shape is runtime-verifiable on this machine. The
 // Codex and Gemini hook shapes are docs-level until the first user runs them
-// (plan section 5 matrix); they are marked accordingly in the verification stamp.
+// (plan section 5 matrix); they are marked accordingly in the confidence stamp.
 
 export const HOOK_CAPABLE_HARNESSES = new Set(["claude", "codex", "gemini"]);
 
@@ -32,8 +33,8 @@ export interface HookEmit {
   banner?: string;
 }
 
-// Claude Code: hooks.json with a SessionStart matcher invoking a launcher.
-function claudeHook(): HookEmit {
+// Claude Code: hooks.json with a SessionStart matcher invoking the launcher.
+function claudeHook(command: string): HookEmit {
   return {
     harness: "claude",
     supportsHooks: true,
@@ -42,57 +43,48 @@ function claudeHook(): HookEmit {
     config: {
       hooks: {
         SessionStart: [
-          {
-            matcher: "startup|clear|compact",
-            hooks: [{ type: "command", command: "conduct-platform-session-start", async: false }],
-          },
+          { matcher: "startup|clear|compact", hooks: [{ type: "command", command, async: false }] },
         ],
       },
     },
   };
 }
 
-// Codex: hooks.json or [hooks] in config.toml; Codex sets CLAUDE_PLUGIN_ROOT for
-// compatibility. Docs-level until the first user runs it.
-function codexHook(): HookEmit {
+// Codex: a separate hooks.json (not config.toml, so it never collides with the
+// MCP config). Docs-level until the first user runs it.
+function codexHook(command: string): HookEmit {
   return {
     harness: "codex",
     supportsHooks: true,
     confidence: "docs-level",
     configPath: ".codex/hooks.json",
-    config: {
-      hooks: {
-        SessionStart: [{ command: "conduct-platform-session-start" }],
-      },
-    },
+    config: { hooks: { SessionStart: [{ command }] } },
   };
 }
 
-// Gemini: hooks in settings.json (events include SessionStart). Docs-level here.
-function geminiHook(): HookEmit {
+// Gemini: hooks live in settings.json (which also holds MCP), so the orchestrator
+// MERGES this in rather than overwriting. Docs-level here.
+function geminiHook(command: string): HookEmit {
   return {
     harness: "gemini",
     supportsHooks: true,
     confidence: "docs-level",
     configPath: ".gemini/settings.json",
-    config: {
-      hooks: {
-        SessionStart: [
-          { matcher: "startup|resume|clear", command: "conduct-platform-session-start" },
-        ],
-      },
-    },
+    config: { hooks: { SessionStart: [{ matcher: "startup|resume|clear", command }] } },
   };
 }
 
-export function emitHook(harness: string): HookEmit {
+// Build the hook emission for a harness. `command` is what the SessionStart hook
+// runs (the orchestrator passes the absolute launcher invocation); it defaults to
+// a bare name for callers that only need the shape/classification.
+export function emitHook(harness: string, command: string = "conduct-platform-session-start"): HookEmit {
   switch (harness) {
     case "claude":
-      return claudeHook();
+      return claudeHook(command);
     case "codex":
-      return codexHook();
+      return codexHook(command);
     case "gemini":
-      return geminiHook();
+      return geminiHook(command);
     default:
       return {
         harness,

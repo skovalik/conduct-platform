@@ -17,11 +17,14 @@ export function currentOs(): Os {
 // shims (npm, npx) resolve. Any throw means absent.
 export function isPresent(cmd: string, versionArg: string = "--version"): boolean {
   try {
-    execFileSync(cmd, [versionArg], {
-      stdio: "ignore",
-      shell: process.platform === "win32",
-      timeout: 15000,
-    });
+    if (process.platform === "win32") {
+      // npm/npx/etc. are .cmd shims; Node refuses to execFile a .cmd without a
+      // shell. Pass ONE command string (cmd is a known tool name, not user input)
+      // rather than an args array with shell:true (Node DEP0190).
+      execFileSync(`${cmd} ${versionArg}`, { stdio: "ignore", shell: true, timeout: 15000 });
+    } else {
+      execFileSync(cmd, [versionArg], { stdio: "ignore", timeout: 15000 });
+    }
     return true;
   } catch {
     return false;

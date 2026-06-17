@@ -21,12 +21,8 @@ export interface GenerateOptions {
 // Throws on failure; the caller falls back to the owned emitters.
 export function runRulesync(opts: GenerateOptions): string {
   const isWin = process.platform === "win32";
-  // npx is a .cmd shim on Windows, and Node refuses to execFile a .cmd without a
-  // shell (EINVAL). So run through the shell on Windows and quote the one path
-  // argument (the input root, which may contain spaces). On POSIX, no shell.
   const runner = opts.runner ?? "npx";
-  const inputRoot = isWin ? `"${opts.root}"` : opts.root;
-  const args = [
+  const base = [
     "-y",
     "rulesync@latest",
     "generate",
@@ -34,15 +30,17 @@ export function runRulesync(opts: GenerateOptions): string {
     opts.targets.join(","),
     "-f",
     opts.features.join(","),
-    "--input-root",
-    inputRoot,
   ];
-  return execFileSync(runner, args, {
-    cwd: opts.root,
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-    shell: isWin,
-  });
+  const common = { cwd: opts.root, encoding: "utf8" as const, maxBuffer: 64 * 1024 * 1024 };
+  if (isWin) {
+    // npx is a .cmd shim on Windows, and Node refuses to execFile a .cmd without a
+    // shell (EINVAL). Pass the whole command as ONE shell string with the path
+    // quoted, rather than an args array with shell:true (which concatenates args
+    // unescaped: Node DEP0190).
+    const cmd = [runner, ...base, "--input-root", `"${opts.root}"`].join(" ");
+    return execFileSync(cmd, { ...common, shell: true });
+  }
+  return execFileSync(runner, [...base, "--input-root", opts.root], common);
 }
 
 export function formatFor(path: string): EmitFormat | null {

@@ -16,14 +16,19 @@ import {
   mkdtempSync,
   cpSync,
   writeFileSync,
+  readFileSync,
   existsSync,
   readdirSync,
   statSync,
+  mkdirSync,
+  copyFileSync,
+  chmodSync,
   rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { join, relative, dirname } from "node:path";
 import { emitReal } from "../emit/emit-real.ts";
+import { emitHook, AGENTS_BANNER } from "../emit/hooks.ts";
 import { formatFor, substituteEmitted } from "../emit/generate.ts";
 import { readCanonical } from "../emit/emitters/canonical.ts";
 import {
@@ -123,7 +128,7 @@ export function runSetup(input: SetupInput): SetupReport {
     );
 
     // 3. emit into staging (generator, else the owned fallback)
-    const emit = emitReal(staging, input.harness, { hook: input.hook, runner: input.emitRunner });
+    const emit = emitReal(staging, input.harness, { runner: input.emitRunner });
     notes.push(...emit.notes);
 
     // Honesty: a non-Codex fallback is the AGENTS.md floor only, so any accepted
@@ -136,6 +141,57 @@ export function runSetup(input: SetupInput): SetupReport {
         notes.push(
           `accepted MCP tool(s) not wired in the ${input.harness} fallback (the floor has no MCP; rich emission needs the generator): ${mcpAccepted.join(", ")}`,
         );
+      }
+    }
+
+    // 3b. SessionStart hook (opt-in). Hook-capable harnesses get the native config
+    // with the launcher installed to a conduct-owned dir and referenced by absolute
+    // path; everyone else gets the AGENTS.md banner. The orchestrator owns this
+    // because it knows the destination path the launcher command needs. The native
+    // config is written into staging so it flows through substitution and merge
+    // (so it never clobbers, e.g., a Gemini settings.json that also holds MCP).
+    if (input.hook) {
+      const klass = emitHook(input.harness);
+      if (klass.supportsHooks && klass.configPath) {
+        const launcherDir = join(dest, ".conduct-platform", "hooks");
+        mkdirSync(launcherDir, { recursive: true });
+        let copied = 0;
+        for (const f of ["run-hook.cmd", "session-start"]) {
+          const src = join(pkg, "payload", "hooks", f);
+          if (existsSync(src)) {
+            copyFileSync(src, join(launcherDir, f));
+            if (process.platform !== "win32") chmodSync(join(launcherDir, f), 0o755);
+            copied++;
+          }
+        }
+        if (copied > 0) {
+          const launcherCmd = `"${join(launcherDir, "run-hook.cmd")}" session-start`;
+          const cfg = emitHook(input.harness, launcherCmd).config as Record<string, unknown>;
+          const stagedCfg = join(staging, klass.configPath);
+          mkdirSync(dirname(stagedCfg), { recursive: true });
+          let existingCfg: Record<string, unknown> = {};
+          if (existsSync(stagedCfg)) {
+            try {
+              existingCfg = JSON.parse(readFileSync(stagedCfg, "utf8")) as Record<string, unknown>;
+            } catch {
+              existingCfg = {};
+            }
+          }
+          writeFileSync(stagedCfg, JSON.stringify({ ...existingCfg, ...cfg }, null, 2) + "\n", "utf8");
+          if (!emit.files.includes(stagedCfg)) emit.files.push(stagedCfg);
+          notes.push(
+            `hook: native SessionStart wired (${input.harness} -> ${klass.configPath}); launcher at .conduct-platform/hooks (${klass.confidence}).`,
+          );
+        } else {
+          notes.push("hook: requested, but the launcher scripts were not found in payload/hooks.");
+        }
+      } else {
+        const agents = join(staging, "AGENTS.md");
+        if (existsSync(agents)) {
+          const cur = readFileSync(agents, "utf8");
+          if (!cur.includes(AGENTS_BANNER)) writeFileSync(agents, AGENTS_BANNER + "\n\n" + cur, "utf8");
+          notes.push(`hook: AGENTS.md banner reminder applied (${input.harness} has no startup hook).`);
+        }
       }
     }
 
@@ -213,6 +269,13 @@ export function runVerb(verb: SetupVerb, input: SetupInput): SetupReport {
     case "uninstall":
     case "rollback": {
       const op = lifecycleUninstall(input.root, input.harness, {}, input.statePath);
+      // Remove the conduct-owned hook launcher (copied directly, not a lifecycle
+      // artifact). Best-effort; absent is fine.
+      try {
+        rmSync(join(input.root, ".conduct-platform", "hooks"), { recursive: true, force: true });
+      } catch {
+        // nothing to remove
+      }
       return { verb, op, offers: [], usedFallback: false, onboarding: onboarding(), notes: op.notes };
     }
     case "rules":

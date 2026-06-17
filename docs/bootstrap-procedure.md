@@ -29,7 +29,7 @@ Everything you discover about the user is unverified until they confirm it. Web 
 Read this document. Detect OS, shell, the harness, and whether a project or global scope is intended. Read the install-state record and compute the collision state for each target. Open an init journal under the destination sessions area (staged outside the destination until it exists).
 
 ### Phase 1: confirm location (no destination writes)
-Summarize what you found. Confirm the scope. Tell the user the path implied by the collision state (user-owned gets a merge, never an overwrite; a prior install updates; a crashed partial resumes). Optionally offer the SessionStart reminder (project scope only, on an explicit yes); today it ships as the AGENTS.md banner, with the native per-harness hook deferred until its launcher is wired.
+Summarize what you found. Confirm the scope. Tell the user the path implied by the collision state (user-owned gets a merge, never an overwrite; a prior install updates; a crashed partial resumes). Optionally offer the SessionStart reminder (project scope only, on an explicit yes): a hook-capable harness gets a native SessionStart hook (the launcher is installed to a conduct-owned dir and referenced by absolute path), and other harnesses get the AGENTS.md banner.
 
 ### Phase 2: research the user, then confirm (web off by default)
 Ask the user their name. With web search off unless they opt in, confirm role, focus, neurotype, working preferences, commit-attribution preference, and the screenshot convenience. Write biographical facts ONLY as a block the user pasted or confirmed item by item, never an inferred bio. Never invent a date. These confirmed values become the token map.
