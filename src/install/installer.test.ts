@@ -1,34 +1,22 @@
 // conduct-platform, authored by Stefan Kovalik <stefan@aurochs.agency>. https://github.com/skovalik/conduct-platform. MIT License (see LICENSE).
-// Installer tests. Run: node --experimental-strip-types --test src/install/installer.test.ts
-// The emit function is stubbed, so this exercises prereq filtering + the
-// emitted-to-payload conversion + the real lifecycle engine, without rulesync.
+// Installer-helper tests. Run: node --experimental-strip-types --test src/install/installer.test.ts
+// Cover the emitted-to-payload conversion, the companion-tool offer, the effective
+// MCP set, and the corpus artifact mapping. The full install path is covered by
+// the orchestrator integration test (src/setup/orchestrate.test.ts).
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { planInstall, payloadFromEmitted, runInstall, corpusArtifacts, type InstallPlan } from "./installer.ts";
+import { payloadFromEmitted, corpusArtifacts, buildToolOffers, effectiveMcpServers } from "./installer.ts";
 import { detect } from "../manifest/detect.ts";
+import { MANIFEST } from "../manifest/manifest.ts";
 
 test("detect finds node and git on this machine (runtime)", () => {
   const d = detect(["node", "git"]);
   assert.equal(d.present["node"], true);
   assert.equal(d.present["git"], true);
-});
-
-test("planInstall keeps entries whose prereqs are present, skips the rest", () => {
-  const plan: InstallPlan = {
-    root: "/tmp/x",
-    scope: "project",
-    harness: "claude",
-    tiers: ["core"],
-    tokenMap: {},
-    committedAt: "2026-06-16",
-  };
-  const r = planInstall(plan);
-  // memory-scaffold has no prereqs, so it is always installable.
-  assert.ok(r.install.some((e) => e.name === "memory-scaffold"));
 });
 
 test("payloadFromEmitted maps markdown to a region and json to owned key paths", () => {
@@ -47,30 +35,39 @@ test("payloadFromEmitted maps markdown to a region and json to owned key paths",
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("runInstall emits, builds a payload, and installs via the lifecycle engine", () => {
-  const dir = mkdtempSync(join(tmpdir(), "cp-install-"));
-  // Stub emit: write an AGENTS.md + .mcp.json into root, return their paths.
-  const emit = (root: string): string[] => {
-    const md = join(root, "AGENTS.md");
-    const js = join(root, ".mcp.json");
-    writeFileSync(md, "# Operating Rules\n\nPlan before code.", "utf8");
-    writeFileSync(js, '{"mcpServers":{"recall":{"command":"recall"}}}', "utf8");
-    return [md, js];
-  };
-  const plan: InstallPlan = {
-    root: dir,
-    scope: "project",
-    harness: "claude",
-    tiers: ["core"],
-    tokenMap: { USER_NAME: "Example" },
-    committedAt: "2026-06-16",
-  };
-  const report = runInstall(plan, emit);
-  assert.ok(report.op?.record?.commitPoint, "install committed");
-  assert.ok(readFileSync(join(dir, "AGENTS.md"), "utf8").includes("Plan before code"));
-  const mcp = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
-  assert.ok(mcp.mcpServers.recall);
-  rmSync(dir, { recursive: true, force: true });
+test("every manifest entry has a valid install spec", () => {
+  const methods = new Set(["builtin", "mcp", "package", "plugin", "subagent"]);
+  for (const e of MANIFEST) {
+    assert.ok(methods.has(e.install.method), `${e.name} method valid`);
+    assert.ok(e.install.hint.length > 0, `${e.name} has a hint`);
+    if (e.install.method === "mcp") assert.ok(e.mcp, `${e.name} (mcp) has mcp wiring`);
+  }
+});
+
+test("buildToolOffers classifies builtin/wire/offer-install and reflects detect()", () => {
+  const offers = buildToolOffers(["core"]);
+  const byName = Object.fromEntries(offers.map((o) => [o.name, o]));
+  // operating-rules ships with conduct-platform.
+  assert.equal(byName["operating-rules"]!.action, "builtin");
+  // recall is an MCP tool: wired if its prereq is present, else offered.
+  const recall = byName["recall"]!;
+  assert.equal(recall.method, "mcp");
+  assert.equal(recall.action, recall.detected ? "wire" : "offer-install");
+  // beads is a package tool: always offer-install, with the OS package managers attached.
+  const beads = byName["beads"]!;
+  assert.equal(beads.method, "package");
+  assert.equal(beads.action, "offer-install");
+  assert.ok(Array.isArray(beads.packageManagers));
+});
+
+test("effectiveMcpServers keeps core servers and adds only accepted optional ones", () => {
+  const core = { recall: { command: "recall" }, context7: { command: "npx", args: ["-y", "x"] } };
+  const eff = effectiveMcpServers(core, ["serena"]);
+  assert.ok(eff["recall"], "core recall kept");
+  assert.ok(eff["context7"], "core context7 kept");
+  assert.ok(eff["serena"], "accepted serena added");
+  assert.equal(eff["voice"], undefined, "non-accepted voice excluded");
+  assert.equal(eff["recall"]!.type, "stdio");
 });
 
 test("corpusArtifacts maps a memory corpus dir to memory/ markdown artifacts", () => {

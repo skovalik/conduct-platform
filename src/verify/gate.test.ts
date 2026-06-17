@@ -62,3 +62,17 @@ test("the seeded CONTINUE_HERE token does not fail the gate", () => {
   assert.ok(check(verifyInstall(dir), "no-leftover-tokens"));
   rmSync(dir, { recursive: true, force: true });
 });
+
+test("scoped to installed files, the gate ignores the user's unrelated files (P6)", () => {
+  const secret = "sk-" + "B".repeat(30);
+  const dir = setup({
+    "CLAUDE.md": "# Rules\n\nA clean install file.",
+    "src/user-code.md": "broken [x](./nope.md) and a ${VAR} and key '" + secret + "'",
+  });
+  // Whole-tree mode (no files list) flags the user's unrelated file.
+  assert.equal(verifyInstall(dir).allPass, false);
+  // Scoped to only our installed artifact, the gate passes.
+  const scoped = verifyInstall(dir, { files: [join(dir, "CLAUDE.md")] });
+  assert.ok(scoped.allPass, JSON.stringify(scoped.checks));
+  rmSync(dir, { recursive: true, force: true });
+});

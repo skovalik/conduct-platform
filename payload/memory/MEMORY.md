@@ -7,7 +7,7 @@ This file is auto-loaded each session. Keep entries to one line. Detail lives in
 
 ## Profile
 - **{{USER_NAME}}**: `{{ROLE_BACKGROUND}}` *(confirmed on first run)*
-- Neurotype: `{{NEUROTYPE}}` *(confirmed on first run)*. The Session Memory Protocol in [CLAUDE.md](../CLAUDE.md) is built for ADHD-pattern / neurodivergent workflows; keep it regardless.
+- Neurotype: `{{NEUROTYPE}}` *(confirmed on first run)*. The Session Memory Protocol in the installed operating rules is built for ADHD-pattern / neurodivergent workflows; keep it regardless.
 - Environment: `{{OS}}` / `{{SHELL}}` · workspace `{{WORKSPACE_ROOT}}` · memory `{{MEMORY_PATH}}`.
 
 ## How Claude thinks, plans & verifies

@@ -16,7 +16,7 @@ A reviewer reading this file, the README, and the source should be able to cite 
 ## Architecture (three layers)
 
 1. **Canonical source.** Tokenized, generic rules, commands, hooks, skills, subagents, MCP config, the memory scaffold, and name-free exemplars. Personal facts are tokens, filled per user.
-2. **Emission.** The AGENTS.md floor reaches every AGENTS.md-reading harness; a generator (rulesync) emits the richer components per harness; conduct-platform owns minimal Codex and Antigravity emitters as a fallback so the core never depends on the generator. Substitution is tokenize-last with a per-format escaper.
+2. **Emission.** The AGENTS.md floor reaches every AGENTS.md-reading harness; a generator (rulesync) emits the richer components per harness; conduct-platform owns a minimal Codex emitter and the universal AGENTS.md floor as the wired fallback, so if the generator is unavailable Codex keeps native rules and MCP and every other harness gets the floor. Substitution is tokenize-last with a per-format escaper. The orchestrator (`src/setup/orchestrate.ts`) composes detect, emit, substitute, merge, and the gate into one runnable install.
 3. **The engine.** The interactive bootstrap, the lifecycle and state engine, the dependency manifest with per-OS detection, the memory scaffold with exemplars, and the transfer and onboarding layer.
 
 ## Derivation

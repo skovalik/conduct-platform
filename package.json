@@ -5,6 +5,9 @@
   "description": "Clone one opinionated agent workspace across every flagship LLM harness, on any OS.",
   "type": "module",
   "license": "MIT",
+  "bin": {
+    "conduct-platform": "bin/cli.mjs"
+  },
   "author": "Stefan Kovalik <stefan@aurochs.agency> (https://github.com/skovalik/conduct-platform)",
   "repository": "https://github.com/skovalik/conduct-platform",
   "engines": {

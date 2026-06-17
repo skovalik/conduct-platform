@@ -61,11 +61,24 @@ function walk(root: string, acc: string[]): string[] {
   return acc;
 }
 
+function existsFile(p: string): boolean {
+  try {
+    return statSync(p).isFile();
+  } catch {
+    return false;
+  }
+}
+
 export function verifyInstall(
   root: string,
-  opts: { seededTokens?: string[] } = {},
+  opts: { seededTokens?: string[]; files?: string[] } = {},
 ): VerifyResult {
-  const files = walk(root, []);
+  // With an explicit file list (the install record's artifacts) scan ONLY those,
+  // so the gate never reads or false-fails on the user's unrelated files. Without
+  // it, walk(root) keeps the simple whole-tree mode (used by the unit tests).
+  const files = opts.files
+    ? opts.files.filter((f) => TEXT_EXT.some((x) => f.toLowerCase().endsWith(x)) && existsFile(f))
+    : walk(root, []);
   const seeded = new Set(opts.seededTokens ?? ["CONTINUE_HERE"]);
   const checks: Check[] = [];
 

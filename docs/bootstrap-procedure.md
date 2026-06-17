@@ -34,14 +34,18 @@ Summarize what you found. Confirm the scope. Tell the user the path implied by t
 ### Phase 2: research the user, then confirm (web off by default)
 Ask the user their name. With web search off unless they opt in, confirm role, focus, neurotype, working preferences, commit-attribution preference, and the screenshot convenience. Write biographical facts ONLY as a block the user pasted or confirmed item by item, never an inferred bio. Never invent a date. These confirmed values become the token map.
 
-### Phase 3: detect tooling (read-only, names only)
-Inventory the harness, plugins, MCP servers, and the task tracker, names only. Probe the dependency manifest's per-OS prerequisites (runtimes and package managers). Present the inventory and the install-with-consent or skip-with-instructions choice for any missing prerequisite. Confirm it is correct.
+### Phase 3: detect tooling and offer the companion tools (read-only, names only)
+Inventory the harness, plugins, MCP servers, and the task tracker, names only. Then build the companion-tool offer (`buildToolOffers`): for each tool in the chosen tiers, its detected state and one of three actions (builtin, wire, offer-install). Present them PROGRESSIVELY, never as one wall:
+- Start with the core "start here" set only. For each: install-with-consent (you run its documented command after an explicit yes) or skip-with-instructions (it is detected later once present). An MCP tool whose prerequisites are present is wired into the harness MCP config on consent. Setup never auto-installs an external tool.
+- Say the recommended and optional tiers exist, and introduce a specific one only when the user hits the need for it, not all at once.
 
-### Phase 4: personalize in staging, then install
-Emit the canonical source per harness (the AGENTS.md floor plus the generator), then tokenize-last: substitute the confirmed token values into the emitted native artifacts with the per-format escaper. Lay down the memory rule corpus. Write everything through the lifecycle engine, which merges into any user-owned file (never clobbering), records each artifact as written-and-verified, and sets the install-state commit point LAST.
+Record which tools the user accepts (the accepted set feeds the install). Confirm the inventory and the accepted set.
 
-### Phase 5: verify (the gate), then mark complete
-Run the verification gate (`src/verify`): no leftover tokens, no residual markers or plugin-path literals, all relative links resolve, no secret-shaped values. On any failure, do NOT set the commit point; record the failing check; the install stays incomplete. Only if every check passes: confirm the commit point, close the journal, and report what was installed, where, and what the user should personally verify (especially the Phase 2 facts).
+### Phase 4: apply (the orchestrator does the deterministic work)
+Assemble the install input (scope, harness, the confirmed token map, the chosen tiers, the accepted companion tools, the hook choice, and the committed date you confirmed) and run the orchestrator (`src/setup/orchestrate.ts`, the `conduct-platform` CLI). It works in a staging dir, never the destination: it emits the canonical source per harness (the generator, else the owned fallback), tokenizes-last with the per-format escaper across the emitted files plus the memory corpus and scaffold, then writes through the lifecycle engine, which merges into any user-owned file (never clobbering) and sets the install-state commit point LAST. Accepted MCP tools flow through the staged mcp.json; run any consented external installs yourself (the orchestrator never auto-installs).
+
+### Phase 5: verify (the gate), then report
+The orchestrator runs the verification gate scoped to ONLY the artifacts it installed (never the user's other files): no leftover tokens, no residual markers or plugin-path literals, all relative links resolve, no secret-shaped values. Because the lifecycle commits as its last write, a failed gate rolls the install back, so nothing verified-looking is left behind. Report what was installed, where, the companion-tool offer outcomes, and what the user should personally verify (especially the Phase 2 facts), then surface the onboarding sheet and the guided first run.
 
 ## update
 Runs against a completed install. Per file, the recorded region text drives a replace (markdown) or our owned keys are updated (JSON, TOML). Clean changes apply; a region the user edited surfaces as a conflict with a per-region choice. Write the new record LAST (the commit point), so a crash leaves the old baseline and a re-run is safe.

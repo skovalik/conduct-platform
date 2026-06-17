@@ -1,55 +1,17 @@
 // conduct-platform, authored by Stefan Kovalik <stefan@aurochs.agency>. https://github.com/skovalik/conduct-platform. MIT License (see LICENSE).
-// The installer: orchestrates prerequisite detection (per OS), emission, and the
-// lifecycle engine. It selects manifest entries by tier, probes their prereqs
-// (install-with-consent or skip-with-instructions is the caller's choice), emits
-// the canonical source, turns the emitted files into a lifecycle Payload, and
-// installs them (merging into any user-owned config, never clobbering). The emit
-// function is injected so this is testable without invoking the generator.
+// Install helpers consumed by the orchestrator (setup/orchestrate.ts): turn
+// emitted, corpus, and scaffold files into lifecycle payload artifacts; build the
+// per-tool companion offer; and compute the effective MCP set. Each stays small and
+// individually testable; the orchestrator composes them into a full install.
 
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseToml } from "smol-toml";
-import { detect } from "../manifest/detect.ts";
-import { MANIFEST, type DepEntry, type DepTier } from "../manifest/manifest.ts";
+import { detect, detectPackageManagers } from "../manifest/detect.ts";
+import { MANIFEST, type DepTier, type InstallMethod } from "../manifest/manifest.ts";
 import { formatFor } from "../emit/generate.ts";
-import {
-  install as lifecycleInstall,
-  type Payload,
-  type PayloadArtifact,
-  type OpResult,
-} from "../lifecycle/lifecycle.ts";
+import type { PayloadArtifact } from "../lifecycle/lifecycle.ts";
 import type { Json } from "../lifecycle/merge/deep-merge.ts";
-
-export interface InstallPlan {
-  root: string;
-  scope: "project" | "global";
-  harness: string;
-  tiers: DepTier[]; // e.g. ["core"] for the minimal start (plan section 10)
-  tokenMap: Record<string, string>;
-  committedAt: string; // never invented; supplied by the caller
-  corpusDir?: string; // optional: the memory rule corpus (payload/memory) to lay down
-}
-
-// Returns the absolute paths of the files it emitted into `root`.
-export type EmitFn = (root: string) => string[];
-
-export interface PlanResult {
-  install: DepEntry[];
-  skippedMissingPrereq: { tool: string; missing: string[] }[];
-}
-
-// Select manifest entries for the chosen tiers and split by prereq availability.
-export function planInstall(plan: InstallPlan): PlanResult {
-  const selected = MANIFEST.filter((e) => plan.tiers.includes(e.tier));
-  const install: DepEntry[] = [];
-  const skipped: { tool: string; missing: string[] }[] = [];
-  for (const e of selected) {
-    const d = detect(e.prereq);
-    if (d.missing.length > 0) skipped.push({ tool: e.name, missing: d.missing });
-    else install.push(e);
-  }
-  return { install, skippedMissingPrereq: skipped };
-}
 
 function leafPaths(obj: Json, prefix: string, out: string[]): void {
   for (const k of Object.keys(obj)) {
@@ -100,41 +62,103 @@ export function corpusArtifacts(corpusDir: string, destMemoryDir: string): Paylo
   return arts;
 }
 
-export interface InstallReport {
-  op?: OpResult;
-  installedTools: string[];
-  skippedMissingPrereq: { tool: string; missing: string[] }[];
-  notes: string[];
+// Lay the name-free scaffold exemplars (an example session and wiki page) under
+// the install's memory/ directory. The scaffold's own MEMORY.md is skipped: the
+// corpus MEMORY.md is the authoritative index. Recurses, so sessions/ and wiki/
+// land at the same relative paths under memory/.
+export function scaffoldArtifacts(
+  scaffoldDir: string,
+  destMemoryDir: string,
+  skip: string[] = ["MEMORY.md"],
+): PayloadArtifact[] {
+  const arts: PayloadArtifact[] = [];
+  if (!existsSync(scaffoldDir)) return arts;
+  const walkMd = (dir: string, rel: string): void => {
+    for (const e of readdirSync(dir)) {
+      const abs = join(dir, e);
+      const r = rel ? rel + "/" + e : e;
+      if (statSync(abs).isDirectory()) {
+        walkMd(abs, r);
+      } else if (e.toLowerCase().endsWith(".md") && !(rel === "" && skip.includes(e))) {
+        arts.push({ path: join(destMemoryDir, r), format: "markdown", markdownRegion: readFileSync(abs, "utf8") });
+      }
+    }
+  };
+  walkMd(scaffoldDir, "");
+  return arts;
 }
 
-export function runInstall(plan: InstallPlan, emit: EmitFn): InstallReport {
-  const { install, skippedMissingPrereq } = planInstall(plan);
-  const notes: string[] = [];
-  for (const s of skippedMissingPrereq) {
-    notes.push(`skipped ${s.tool}: missing prerequisite(s) ${s.missing.join(", ")}`);
+export interface ToolOffer {
+  name: string;
+  tier: DepTier;
+  method: InstallMethod;
+  summary: string;
+  hint: string;
+  detected: boolean; // all prereqs present
+  missingPrereqs: string[];
+  action: "builtin" | "wire" | "offer-install";
+  packageManagers?: string[]; // package/plugin methods: what is available on this OS
+}
+
+// The per-tool offer setup presents. For each manifest entry in the chosen tiers:
+// its detected state and the action. builtin = ships with conduct-platform; wire =
+// an MCP tool whose prereqs are present (added to the harness MCP config on
+// consent); offer-install = external, shown with an honest hint to
+// install-with-consent or skip-with-instructions. Setup never auto-installs an
+// external tool. Pure over detect(), so it is testable without side effects.
+export function buildToolOffers(tiers: DepTier[]): ToolOffer[] {
+  const pms = detectPackageManagers().available;
+  const offers: ToolOffer[] = [];
+  for (const e of MANIFEST) {
+    if (!tiers.includes(e.tier)) continue;
+    const d = detect(e.prereq);
+    const detected = d.missing.length === 0;
+    let action: ToolOffer["action"];
+    if (e.install.method === "builtin") action = "builtin";
+    else if (e.install.method === "mcp" && detected) action = "wire";
+    else action = "offer-install";
+    const offer: ToolOffer = {
+      name: e.name,
+      tier: e.tier,
+      method: e.install.method,
+      summary: e.summary,
+      hint: e.install.hint,
+      detected,
+      missingPrereqs: d.missing,
+      action,
+    };
+    if (e.install.method === "package" || e.install.method === "plugin") {
+      offer.packageManagers = pms;
+    }
+    offers.push(offer);
   }
+  return offers;
+}
 
-  const emitted = emit(plan.root);
-  const artifacts = payloadFromEmitted(emitted);
-  if (plan.corpusDir) {
-    artifacts.push(...corpusArtifacts(plan.corpusDir, join(plan.root, "memory")));
+export interface McpServerConfig {
+  type: string;
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+}
+
+// The effective MCP server set to emit: the always-core servers (from the
+// canonical mcp.json) plus any accepted optional MCP-method tools, pulled from
+// their manifest `mcp` field. The orchestrator writes this into the staged
+// mcp.json before emission, so accepted servers flow through the normal
+// per-harness emission path (no second MCP code path).
+export function effectiveMcpServers(
+  core: Record<string, { type?: string; command: string; args?: string[]; env?: Record<string, string> }>,
+  acceptedMcpTools: string[],
+): Record<string, McpServerConfig> {
+  const out: Record<string, McpServerConfig> = {};
+  for (const [name, s] of Object.entries(core)) {
+    out[name] = { type: s.type ?? "stdio", command: s.command, args: s.args ?? [], env: s.env ?? {} };
   }
-
-  const payload: Payload = {
-    harness: plan.harness,
-    scope: plan.scope,
-    root: plan.root,
-    formatVersion: "0.0.0",
-    tokenMap: plan.tokenMap,
-    artifacts,
-  };
-  const op = lifecycleInstall(payload, plan.committedAt);
-  notes.push(...op.notes);
-
-  return {
-    op,
-    installedTools: install.map((e) => e.name),
-    skippedMissingPrereq,
-    notes,
-  };
+  for (const e of MANIFEST) {
+    if (e.install.method !== "mcp" || !e.mcp) continue;
+    if (!acceptedMcpTools.includes(e.name)) continue;
+    out[e.name] = { type: "stdio", command: e.mcp.command, args: e.mcp.args, env: {} };
+  }
+  return out;
 }
