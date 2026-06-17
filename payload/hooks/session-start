@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# conduct-platform SessionStart hook. Emits a one-line reminder IFF the rules are
+# installed here but not yet personalized (an unfilled {{token}} remains in a
+# rules file). Silent in every other case. Fail-open: any error exits 0 and
+# injects nothing, so it never blocks a session. No in-band marker is read; the
+# unfilled-token signal works the same across harnesses.
+#
+# Honesty: the JSON output below is Claude Code's hookSpecificOutput shape, the
+# one runtime-verifiable here. Codex and Gemini have SessionStart hooks too, but
+# their context-injection output differs and is docs-level until the first user
+# runs them (plan section 5).
+
+set -uo pipefail
+trap 'exit 0' ERR
+
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-}"
+if [ -z "$PROJECT_DIR" ]; then
+  STDIN_JSON="$(cat 2>/dev/null || true)"
+  PROJECT_DIR="$(printf '%s' "$STDIN_JSON" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+fi
+[ -n "$PROJECT_DIR" ] || exit 0
+[ -d "$PROJECT_DIR" ] || exit 0
+
+for f in "$PROJECT_DIR/CLAUDE.md" "$PROJECT_DIR/AGENTS.md" "$PROJECT_DIR/GEMINI.md"; do
+  [ -f "$f" ] || continue
+  if grep -q '{{' "$f" 2>/dev/null; then
+    MSG="conduct-platform rules are installed but not personalized (unfilled {{tokens}} remain). Run the setup command to finish."
+    printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$MSG"
+    exit 0
+  fi
+done
+exit 0

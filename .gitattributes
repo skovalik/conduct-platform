@@ -1,0 +1,9 @@
+# conduct-platform: force LF in the repo and working tree on every platform.
+# The shipped hook scripts are executed by the shell git invokes, which fails on
+# CRLF line endings. Forcing LF keeps them correct on a Windows clone where
+# core.autocrlf would otherwise rewrite them to CRLF.
+* text=auto eol=lf
+
+# Hook scripts must be LF (bash and the polyglot launcher break on CRLF).
+payload/hooks/session-start  text eol=lf
+payload/hooks/run-hook.cmd   text eol=lf

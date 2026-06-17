@@ -1,0 +1,24 @@
+{
+  "name": "conduct-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Clone one opinionated agent workspace across every flagship LLM harness, on any OS.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Stefan Kovalik <stefan@aurochs.agency> (https://github.com/skovalik/conduct-platform)",
+  "repository": "https://github.com/skovalik/conduct-platform",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "smol-toml": "^1.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0"
+  }
+}

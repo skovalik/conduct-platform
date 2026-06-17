@@ -1,0 +1,19 @@
+{
+  // conduct-platform canonical-source generator config (rulesync backend).
+  // The .rulesync/ tree is the committed canonical source; rulesync emits the
+  // per-harness native artifacts, and conduct-platform then tokenize-substitutes
+  // (plan sections 4-5). Targets carry their honest confidence stamp in the
+  // section-5 matrix; runtime proof beyond Claude Code is the first user's.
+  "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/config-schema.json",
+  "targets": ["claudecode", "codexcli", "geminicli", "agentsmd"],
+  "features": ["rules", "mcp", "commands", "subagents"],
+  "outputRoots": ["."],
+  "delete": false,
+  "verbose": false,
+  "silent": false,
+  "global": false,
+  "simulateCommands": false,
+  "simulateSubagents": false,
+  "simulateSkills": false,
+  "gitignoreTargetsOnly": true
+}

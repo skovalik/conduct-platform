@@ -1,0 +1,26 @@
+# conduct-platform repo .gitignore
+
+# Internal planning and design history. Local only, never committed.
+/docs/plans/
+
+# Local-only maintainer tooling and private working files. Never committed.
+/.scrub/
+
+# Generator spike scratch (rulesync / ai-rulez output, emitted dirs, installs).
+/spikes/
+
+# Node.
+/node_modules/
+/dist/
+npm-debug.log*
+
+# conduct-platform out-of-band install state and runtime artifacts.
+/.conduct-platform/
+install-state.json
+*.conduct-platform-bak/
+conduct-platform-backup-*/
+.conduct-platform-review-*
+
+# OS cruft.
+.DS_Store
+Thumbs.db

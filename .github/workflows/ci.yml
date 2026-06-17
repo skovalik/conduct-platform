@@ -1,0 +1,27 @@
+# conduct-platform CI matrix. Runs across Windows, macOS, and Linux: typecheck
+# (the schema/type lint), the test suite, and a best-effort dry-emit of the
+# canonical source through the generator.
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - name: Typecheck (schema and type lint)
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Dry-emit the canonical source (best effort)
+        continue-on-error: true
+        run: npx -y rulesync@latest generate -t claudecode,codexcli,geminicli,agentsmd -f rules,mcp,commands,subagents --dry-run
