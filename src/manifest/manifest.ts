@@ -176,9 +176,9 @@ export const MANIFEST: DepEntry[] = [
     tier: "optional",
     summary: "Writing-voice MCP server (optional).",
     prereq: ["python"],
-    confidence: "docs-verified",
+    confidence: "runtime-verified",
     install: { method: "mcp", hint: "MCP server (needs Python). Added to your harness's MCP config when you accept." },
-    mcp: { command: "voice", args: [] },
+    mcp: { command: "voice-mcp", args: [] },
   },
 ];
 
