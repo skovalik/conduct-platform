@@ -29,8 +29,8 @@ was rolled back), `2` on a usage or input error.
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
-| `root` | string | yes | The destination: the project root (project scope) or the harness config dir (global scope). |
-| `scope` | `"project"` \| `"global"` | yes | Where the rules live. |
+| `root` | string | yes | The destination root. Artifacts always land in a project-shaped layout under it (`CLAUDE.md`, `AGENTS.md`, `.mcp.json`, `.claude/`, `memory/`), so point it at a project root. |
+| `scope` | `"project"` \| `"global"` | yes | Recorded in the install state; it does not change emitted paths today. Use `"project"`. For Claude Code, a harness-config-dir root produces a layout the harness does not read. |
 | `harness` | string | yes | The target harness: `claude`, `codex`, `gemini`, `antigravity`, or another name (others get the AGENTS.md floor). |
 | `tokenMap` | object | yes | The confirmed token values (see below). Fill every token you confirmed; omit `CONTINUE_HERE` (it is seeded, not filled). |
 | `tiers` | string[] | yes | Which companion tiers to consider: `core`, `recommended`, `optional`. |
