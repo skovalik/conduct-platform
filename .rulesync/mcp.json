@@ -3,7 +3,7 @@
   "mcpServers": {
     "recall": {
       "type": "stdio",
-      "command": "recall",
+      "command": "recall-mcp",
       "args": [],
       "env": {}
     },

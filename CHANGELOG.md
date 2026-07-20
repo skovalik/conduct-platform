@@ -18,6 +18,9 @@ All notable changes to conduct-platform. The release helper (`scripts/release.mj
 - The SessionStart hook script and cross-OS polyglot launcher.
 - MAINTAINING.md (the one-way promote model, the contributor model, the release process) and DESIGN.md.
 - Full conduct rule corpus seeded into `payload/memory/`; operating-rules expanded to the full always-loaded payload.
+- Fixed the serena MCP launch command to `uvx --from serena-agent` (the shipped `git+serena` is not a parseable requirement and could never start; found by the first user install).
+- Fixed the recall MCP wiring in the manifest and the canonical `mcp.json`: launch via the `recall-mcp` console script (shipped by recall 0.2.0 and newer). The bare `recall` command defaults to its `search` subcommand and never serves MCP.
+- CLI doc corrected: `scope` is recorded but does not change emitted paths; project scope is the supported path, and a harness-config-dir root emits a layout Claude Code does not read.
 
 ## 0.0.0
 

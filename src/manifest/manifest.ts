@@ -65,7 +65,7 @@ export const MANIFEST: DepEntry[] = [
     prereq: ["python"],
     confidence: "runtime-verified",
     install: { method: "mcp", hint: "MCP server (needs Python). Added to your harness's MCP config when you accept." },
-    mcp: { command: "recall", args: [] },
+    mcp: { command: "recall-mcp", args: [] },
   },
   {
     name: "beads",
@@ -112,7 +112,7 @@ export const MANIFEST: DepEntry[] = [
     prereq: ["uvx"],
     confidence: "docs-verified",
     install: { method: "mcp", hint: "MCP server (needs uvx). Added to your harness's MCP config when you accept." },
-    mcp: { command: "uvx", args: ["--from", "git+serena", "serena", "start-mcp-server"] },
+    mcp: { command: "uvx", args: ["--from", "serena-agent", "serena", "start-mcp-server"] },
   },
   {
     name: "context7",
